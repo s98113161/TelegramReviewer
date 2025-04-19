@@ -8,3 +8,12 @@ src/__pycache__/*
 src/utils/__pycache__/*
 logs/*
 telegram_reviewer_history.json
+src/core/__pycache__/message_analyzer.cpython-311.pyc
+src/core/__pycache__/message_fetcher.cpython-311.pyc
+src/core/__pycache__/telegram_client.cpython-311.pyc
+src/core/__pycache__/__init__.cpython-311.pyc
+src/message_handling/__pycache__/__init__.cpython-311.pyc
+src/message_handling/__pycache__/forwarder.cpython-311.pyc
+src/ui/__pycache__/__init__.cpython-311.pyc
+.gitignore
+src/ui/__pycache__/cli.cpython-311.pyc
