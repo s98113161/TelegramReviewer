@@ -22,7 +22,7 @@ TelegramReviewer/
 ├── requirements.txt                  # 相依套件清單
 ├── telegram_reviewer_history.json    # 歷史分析紀錄
 ├── telegram_reviewer_session.session # Telegram 登入資訊
-├── telegram_reviewer.py              # 主程式啟動點
+├── telegram_reviewer.py              # 主程式啟動點（✅ 請使用此檔案執行程式）
 ├── logs/                             # 日誌資料夾
 │   └── telegram_reviewer_*.log       # 程式執行日誌
 ├── results/                          # 分析結果和圖表輸出資料夾
@@ -70,44 +70,41 @@ PHONE=+8861234567890
 
 ## 使用方法
 
-基本用法（互動式選擇群組）：
+⚠️ **重要提示：請使用專案根目錄中的 `telegram_reviewer.py` 執行本程式**
+
+主要執行方式：
 ```
 python telegram_reviewer.py
 ```
 
-或者使用 src 中的主模組：
-```
-python src/main.py
-```
-
 指定分析的訊息時間範圍：
 ```
-python src/main.py --days 60
+python telegram_reviewer.py --days 60
 ```
 
 指定分析的訊息數量上限：
 ```
-python src/main.py --limit 2000
+python telegram_reviewer.py --limit 2000
 ```
 
 指定顯示的熱門訊息數量：
 ```
-python src/main.py --top 10
+python telegram_reviewer.py --top 10
 ```
 
 使用上次選擇的群組，不再詢問：
 ```
-python src/main.py --use-history yes
+python telegram_reviewer.py --use-history yes
 ```
 
 不使用上次選擇的群組，直接顯示群組選擇界面：
 ```
-python src/main.py --use-history no
+python telegram_reviewer.py --use-history no
 ```
 
 同時指定多個參數：
 ```
-python src/main.py --days 14 --limit 500 --top 8 --use-history yes
+python telegram_reviewer.py --days 14 --limit 500 --top 8 --use-history yes
 ```
 
 ## 參數說明
@@ -135,13 +132,6 @@ python src/main.py --days 14 --limit 500 --top 8 --use-history yes
    - 回覆數最多的熱門討論訊息 Top N
    - 最活躍的使用者排行
    - 最常使用的表情符號統計
-
-2. 在 `results/` 資料夾中產生視覺化圖表：
-   - `most_reactions.png`: 表情符號反應總和最高的訊息
-   - `most_replied.png`: 回覆數最多的訊息
-   - `messages_per_day.png`: 每日訊息量趨勢
-   - `messages_per_user.png`: 最活躍使用者分析
-   - `top_reactions.png`: 最常用表情符號統計
 
 ## 技術細節
 
