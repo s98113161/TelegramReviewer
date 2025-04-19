@@ -1,0 +1,10 @@
+results/*
+.env
+telegram_reviewer_session.session
+telegram_reviewer_session.session-journal
+___pycache__/*
+src/__pycache__/*
+.gitignore
+src/utils/__pycache__/*
+logs/*
+telegram_reviewer_history.json
