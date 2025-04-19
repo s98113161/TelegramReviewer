@@ -200,7 +200,6 @@ class AnalysisResultsDisplay:
         
         self._print_header(analysis_results, group_name)
         self._print_reactions_ranking(analysis_results, top_count)
-        self._print_replies_ranking(analysis_results, top_count)
         self._print_footer()
     
     def _print_header(self, analysis_results, group_name):
@@ -231,22 +230,6 @@ class AnalysisResultsDisplay:
         else:
             print(f"{self.c.RED}(沒有表情符號反應資料){self.c.RESET}")
     
-    def _print_replies_ranking(self, analysis_results, top_count):
-        """印出回覆數排行榜"""
-        print(f"\n{self.c.BRIGHT_CYAN}{'='*60}")
-        print(f"💬 回覆數最多的訊息 TOP {top_count}{self.c.RESET}")
-        print(f"{'='*60}")
-        
-        if not analysis_results['most_replied'].empty:
-            try:
-                for i, (_, row) in enumerate(analysis_results['most_replied'].head(top_count).iterrows(), 1):
-                    self._print_message_item(i, row, is_reaction=False)
-            except Exception as e:
-                print(f"\n❌ 在顯示回覆最多訊息時發生錯誤: {str(e)}")
-                logger.error(f"顯示回覆最多訊息時發生錯誤: {e}")
-        else:
-            print(f"{self.c.RED}(沒有回覆資料){self.c.RESET}")
-    
     def _print_footer(self):
         """印出分析結果頁尾"""
         print(f"\n{self.c.BRIGHT_CYAN}{'='*60}{self.c.RESET}")
@@ -269,22 +252,16 @@ class AnalysisResultsDisplay:
         print(f"\n{self.c.BRIGHT_BLACK}{'─' * 50}{self.c.RESET}")
         date_str = row['date'].strftime('%Y-%m-%d %H:%M')
         
-        # 準備統計資訊
-        stats = []
-        if is_reaction:
-            stats = [
-                f"{self.c.CYAN}表情符號{self.c.RESET}: {row['reactions_detail'] if row['reactions_detail'] else '無'}",
-                f"{self.c.MAGENTA}反應總數{self.c.RESET}: {row['total_reactions']}",
-                f"{self.c.MAGENTA}回覆數{self.c.RESET}: {row['reply_count']}"
-            ]
-        else:
-            stats = [
-                f"{self.c.MAGENTA}回覆數{self.c.RESET}: {row['reply_count']}",
-                f"{self.c.MAGENTA}反應總數{self.c.RESET}: {row['total_reactions']}"
-            ]
-            if row['reactions_detail']:
-                stats.append(f"{self.c.CYAN}表情符號{self.c.RESET}: {row['reactions_detail']}")
+        # 準備統計資訊 (已移除回覆相關的條件判斷)
+        stats = [
+            f"{self.c.CYAN}表情符號{self.c.RESET}: {row['reactions_detail'] if row['reactions_detail'] else '無'}",
+            f"{self.c.MAGENTA}反應總數{self.c.RESET}: {row['total_reactions']}"
+        ]
         
+        # 顯示回覆數
+        if 'reply_count' in row:
+            stats.append(f"{self.c.MAGENTA}回覆數{self.c.RESET}: {row['reply_count']}")
+            
         # 顯示瀏覽數（如果有）
         if 'views' in row and row['views'] is not None and row['views'] > 0:
             stats.append(f"{self.c.BLUE}瀏覽數{self.c.RESET}: {row['views']}")

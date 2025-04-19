@@ -1,10 +1,14 @@
-# Python
+# 環境變數
+.env
+
+# Python 暫存檔
 __pycache__/
 *.py[cod]
 *$py.class
+
+# 分佈式檔案
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -20,29 +24,23 @@ var/
 .installed.cfg
 *.egg
 
-# Logs
+# Telegram 會話檔案
+*.session
+
+# 日誌
 logs/
 *.log
 
-# Telegram session files
-*.session
-*.session-journal
+# 結果檔案
+results/
 
-# Environment variables
-.env
+# 虛擬環境
+venv/
+env/
+ENV/
 
-# IDE files
+# IDE 相關
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# OS specific
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-telegram_reviewer_history.json

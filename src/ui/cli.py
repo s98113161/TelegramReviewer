@@ -227,8 +227,32 @@ class CommandLineInterface:
             
     async def analyze_group(self, group, args):
         """分析單個群組並顯示結果"""
-        print(f"\n正在分析 {group['name']} 的近 {args.days} 天訊息...")
-        print(f"(最多分析 {args.limit} 則訊息，請稍候...)")
+        # 根據參數顯示不同的訊息提示
+        if args.start_date is not None:
+            # 顯示指定日期範圍
+            start_date_str = args.start_date.strftime("%Y-%m-%d")
+            end_date_str = args.end_date.strftime("%Y-%m-%d")
+            
+            if args.limit is not None:
+                # 指定了日期範圍和數量限制
+                print(f"\n正在分析 {group['name']} 的 {start_date_str} 至 {end_date_str} 期間訊息...")
+                print(f"(最多分析 {args.limit} 則訊息，請稍候...)")
+            else:
+                # 只指定了日期範圍，不限制數量
+                print(f"\n正在分析 {group['name']} 的 {start_date_str} 至 {end_date_str} 期間所有訊息...")
+                print("(不限制訊息數量，請稍候...)")
+        elif args.days is not None and args.limit is not None:
+            # 同時指定天數和數量
+            print(f"\n正在分析 {group['name']} 的近 {args.days} 天訊息...")
+            print(f"(最多分析 {args.limit} 則訊息，請稍候...)")
+        elif args.days is not None:
+            # 只指定天數，不限制數量
+            print(f"\n正在分析 {group['name']} 的近 {args.days} 天所有訊息...")
+            print("(不限制訊息數量，請稍候...)")
+        elif args.limit is not None:
+            # 只指定數量，不限制天數
+            print(f"\n正在分析 {group['name']} 的最近 {args.limit} 則訊息...")
+            print("(不限制時間範圍，請稍候...)")
         
         # 獲取實體信息
         entity = None
@@ -246,16 +270,24 @@ class CommandLineInterface:
         messages = await self.message_fetcher.get_recent_messages(
             entity,
             days=args.days,
-            limit=args.limit
+            limit=args.limit,
+            start_date=args.start_date,
+            end_date=args.end_date
         )
         
         if not messages:
-            print(f"\n⚠️ 在 {group['name']} 中沒有找到任何近 {args.days} 天的訊息。")
+            # 根據不同條件顯示不同的提示訊息
+            if args.start_date is not None:
+                print(f"\n⚠️ 在 {group['name']} 中沒有找到 {args.start_date.strftime('%Y-%m-%d')} 至 {args.end_date.strftime('%Y-%m-%d')} 期間的訊息。")
+            elif args.days is not None:
+                print(f"\n⚠️ 在 {group['name']} 中沒有找到近 {args.days} 天的訊息。")
+            else:
+                print(f"\n⚠️ 在 {group['name']} 中沒有找到任何訊息。")
             return
         
-        # 分析訊息
+        # 分析訊息 - 將 args.top 參數傳遞給 analyze_messages 函數
         print(f"正在分析 {len(messages)} 則訊息...")
-        analysis_results = self.message_analyzer.analyze_messages(messages)
+        analysis_results = self.message_analyzer.analyze_messages(messages, top_limit=args.top)
         
         # 顯示分析結果
         self.clear_screen()
@@ -265,7 +297,7 @@ class CommandLineInterface:
         # 取得要轉發的熱門訊息清單
         top_messages = []
         if 'most_reactions' in analysis_results and len(analysis_results['most_reactions']) > 0:
-            # 取得最多反應的訊息
+            # 取得最多反應的訊息，使用 args.top 參數限制數量
             top_df = analysis_results['most_reactions'].head(args.top)
             
             # 尋找原始訊息對象
@@ -283,10 +315,29 @@ class CommandLineInterface:
         
         # 將熱門訊息轉發到專屬的儲存群組
         print("\n正在將熱門訊息轉發到專屬儲存群組...")
+        
+        # 決定要傳遞的時間範圍參數
+        days_for_forwarding = None
+        if args.start_date is not None and args.end_date is not None:
+            # 如果指定了起始日期，計算日期範圍
+            days_for_forwarding = (args.end_date - args.start_date).days + 1
+        elif args.days is not None:
+            days_for_forwarding = args.days
+        else:
+            # 如果沒有指定天數，則使用分析結果中的時間範圍
+            if 'period' in analysis_results:
+                from datetime import datetime
+                period = analysis_results['period']
+                start_date = period['start']
+                end_date = period['end']
+                days_for_forwarding = (end_date - start_date).days + 1
+            else:
+                days_for_forwarding = 30  # 預設值
+        
         success = await self.message_forwarder.forward_top_messages_to_storage_group(
             entity,                # 目標群組
             top_messages,          # 熱門訊息列表
-            args.days,             # 時間範圍
+            days_for_forwarding,   # 時間範圍
             all_messages=messages, # 傳入已獲取的訊息集合
             analysis_results=analysis_results  # 傳入分析結果
         )
