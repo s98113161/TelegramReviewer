@@ -6,8 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-# 從src正確導入
-from src.config import LOG_FORMAT, LOG_LEVEL, LOG_FILE
+# 更新導入路徑
+from config.settings import LOG_FORMAT, LOG_LEVEL, LOG_FILE
 
 def setup_logger(name='telegram_reviewer'):
     """設置和配置日誌記錄器
@@ -18,6 +18,10 @@ def setup_logger(name='telegram_reviewer'):
     Returns:
         logging.Logger: 配置好的日誌記錄器
     """
+    # 確保日誌目錄存在
+    log_dir = LOG_FILE.parent
+    log_dir.mkdir(exist_ok=True)
+    
     # 創建日誌格式器
     log_formatter = logging.Formatter(LOG_FORMAT)
 

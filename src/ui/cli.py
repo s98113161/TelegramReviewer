@@ -8,15 +8,17 @@ import json
 import shutil
 import asyncio
 from datetime import datetime
+from typing import List, Dict, Any, Optional
 
-# 將相對導入改為絕對導入
-from src.config import GROUP_HISTORY_FILE
+# 更新導入路徑
+from config.settings import GROUP_HISTORY_FILE
 from src.utils.logger import logger
+from data.storage import GroupHistoryManager
 
 class CommandLineInterface:
     """命令列互動介面，用於選擇群組查看熱門訊息"""
 
-    def __init__(self, client_manager, message_fetcher, message_analyzer, message_forwarder):
+    def __init__(self, client_manager, message_fetcher, message_analyzer, message_forwarder, results_storage=None):
         """初始化命令列介面
         
         Args:
@@ -24,11 +26,13 @@ class CommandLineInterface:
             message_fetcher: 訊息獲取器實例
             message_analyzer: 訊息分析器實例
             message_forwarder: 訊息轉發器實例
+            results_storage: 結果儲存管理器實例（可選）
         """
         self.client_manager = client_manager
         self.message_fetcher = message_fetcher
         self.message_analyzer = message_analyzer
         self.message_forwarder = message_forwarder
+        self.results_storage = results_storage
         
         # 獲取終端寬度
         self.terminal_width = shutil.get_terminal_size().columns
@@ -37,7 +41,8 @@ class CommandLineInterface:
         # 儲存使用者選擇的群組
         self.selected_groups = []
         # 上次選擇的群組紀錄
-        self.history_groups = self.load_group_history()
+        self.history_manager = GroupHistoryManager()
+        self.history_groups = self.history_manager.load_group_history()
 
     async def setup(self):
         """連接到 Telegram API"""
@@ -59,32 +64,13 @@ class CommandLineInterface:
         print(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}".center(58))
         print("=" * 60)
 
-    def load_group_history(self):
-        """載入上次選擇的群組記錄"""
-        if GROUP_HISTORY_FILE.exists():
-            try:
-                with open(GROUP_HISTORY_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.error(f"載入群組歷史記錄失敗: {e}")
-        return []
-
     def save_group_history(self, groups):
-        """儲存選擇的群組"""
-        try:
-            # 只保存必要信息，避免存儲過多數據
-            simplified_groups = []
-            for group in groups:
-                simplified_groups.append({
-                    'id': group['id'],
-                    'name': group['name'],
-                    'type': group['type']
-                })
-                
-            with open(GROUP_HISTORY_FILE, 'w', encoding='utf-8') as f:
-                json.dump(simplified_groups, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"保存群組歷史記錄失敗: {e}")
+        """儲存選擇的群組
+        
+        Args:
+            groups: 群組列表
+        """
+        self.history_manager.save_group_history(groups)
 
     def select_groups_by_keyboard(self, groups):
         """使用鍵盤方向鍵選擇多個群組"""
@@ -226,7 +212,12 @@ class CommandLineInterface:
             print("請輸入 y 或 n")
             
     async def analyze_group(self, group, args):
-        """分析單個群組並顯示結果"""
+        """分析單個群組並顯示結果
+        
+        Args:
+            group: 群組信息
+            args: 命令行參數
+        """
         # 根據參數顯示不同的訊息提示
         if args.start_date is not None:
             # 顯示指定日期範圍
@@ -261,7 +252,7 @@ class CommandLineInterface:
             if 'entity' in group:
                 entity = group['entity']
             else:
-                entity = await self.client_manager.client.get_entity(group['id'])
+                entity = await self.client_manager.get_entity(group['id'])
         except Exception as e:
             print(f"\n❌ 無法獲取群組 {group['name']} 的資訊: {e}")
             return
@@ -293,6 +284,16 @@ class CommandLineInterface:
         self.clear_screen()
         self.print_header()
         self.message_analyzer.print_analysis_results(analysis_results, group['name'], args.top)
+        
+        # 保存分析結果（如果需要）
+        if hasattr(args, 'save') and args.save and self.results_storage:
+            saved_path = self.message_analyzer.save_analysis_results(
+                analysis_results, 
+                group['name'],
+                self.results_storage
+            )
+            if saved_path:
+                print(f"\n✅ 分析結果已保存到: {saved_path}")
         
         # 取得要轉發的熱門訊息清單
         top_messages = []
