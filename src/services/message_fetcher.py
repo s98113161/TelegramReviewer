@@ -49,15 +49,19 @@ class MessageFetcher:
             if end_date.tzinfo is None:
                 end_date = end_date.replace(tzinfo=timezone.utc)
             
-            logger.info(f"正在從 {group_title} 獲取 {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')} 期間的訊息...")
-            print(f"\n正在從 {group_title} 獲取 {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')} 期間的訊息，請稍候...")
+            logger.info(f"正在從 {group_title} 獲取 {start_date.strftime('%Y-%m-%d %H:%M')} 至 {end_date.strftime('%Y-%m-%d %H:%M')} 期間的訊息...")
+            print(f"\n正在從 {group_title} 獲取 {start_date.strftime('%Y-%m-%d %H:%M')} 至 {end_date.strftime('%Y-%m-%d %H:%M')} 期間的訊息，請稍候...")
         elif days is not None:
             # 根據天數計算日期範圍
             end_date = datetime.now(timezone.utc)
-            start_date = end_date - timedelta(days=days)
             
-            logger.info(f"正在從 {group_title} 獲取近 {days} 天的訊息...")
-            print(f"\n正在從 {group_title} 獲取近 {days} 天的訊息，請稍候...")
+            # 關鍵修改：確保完整計算指定天數對應的小時數
+            hours_to_subtract = days * 24
+            start_date = end_date - timedelta(hours=hours_to_subtract)
+            
+            # 記錄詳細的日期時間範圍，包含小時和分鐘
+            logger.info(f"正在從 {group_title} 獲取近 {days} 天的訊息 ({start_date.strftime('%Y-%m-%d %H:%M')} 至 {end_date.strftime('%Y-%m-%d %H:%M')})，總計 {hours_to_subtract} 小時...")
+            print(f"\n正在從 {group_title} 獲取近 {days} 天的訊息 ({start_date.strftime('%Y-%m-%d %H:%M')} 至 {end_date.strftime('%Y-%m-%d %H:%M')})，總計 {hours_to_subtract} 小時，請稍候...")
         else:
             # 沒有指定日期範圍，視為錯誤
             logger.error(f"未指定日期範圍")
@@ -68,12 +72,12 @@ class MessageFetcher:
         c = Colors if self.use_colors else type('NoColors', (), {attr: '' for attr in dir(Colors) if not attr.startswith('__')})
         
         # 準備 Telegram API 過濾參數
-        # 根據 Telethon 文檔，iter_messages 支持 offset_date 參數在服務器端過濾
+        # Telegram API 的 iter_messages 只支持 end_date 參數，不支持 start_date
         kwargs = {}
         
-        if start_date is not None:
-            # offset_date 會獲取早於或等於該日期的訊息
-            kwargs['offset_date'] = start_date
+        # 使用 end_date 而不是 start_date 來獲取訊息
+        # Telegram 會返回「早於或等於」end_date 的訊息
+        kwargs['offset_date'] = end_date
         
         # 初始化計數器
         counter = ProgressBar(prefix=f"{c.BRIGHT_CYAN}獲取進度:{c.RESET}", suffix=f"{c.YELLOW}完成{c.RESET}")
@@ -86,8 +90,18 @@ class MessageFetcher:
                 if message_date.tzinfo is None:
                     message_date = message_date.replace(tzinfo=timezone.utc)
                 
-                # 如果設置了結束日期，且訊息早於開始日期或晚於結束日期，則跳過
-                if end_date is not None and message_date > end_date:
+                # 詳細記錄訊息處理過程
+                logger.info(f"檢查訊息: {message_date}, 範圍: {start_date} 至 {end_date}, ID: {message.id}")
+                
+                # 只處理在指定時間範圍內的訊息
+                # 訊息日期必須在開始日期和結束日期之間 (包含兩端)
+                if message_date < start_date:
+                    # 由於 Telegram API 按時間倒序返回訊息，一旦發現訊息早於 start_date，後續訊息都會更早，可以直接結束
+                    logger.info(f"訊息日期 {message_date} 早於開始日期 {start_date}，停止獲取訊息")
+                    break
+                elif message_date > end_date:
+                    # 訊息晚於 end_date，繼續查找更早的訊息
+                    logger.info(f"訊息日期 {message_date} 晚於結束日期 {end_date}，跳過此訊息")
                     continue
                 
                 # 跳過沒有文字內容的訊息
@@ -121,8 +135,9 @@ class MessageFetcher:
                 if len(messages) % 10 == 0:
                     counter.update(10)
                 
-                # 如果訊息數量達到 10000 條，則停止獲取
-                if len(messages) >= 10000:
+                # 如果訊息數量達到 100000 條，則停止獲取
+                if len(messages) >= 100000:
+                    logger.info(f"已達到 100000 條訊息上限，停止獲取")
                     break
             
             # 完成計數並顯示最終結果
