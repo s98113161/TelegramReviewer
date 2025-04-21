@@ -75,30 +75,12 @@ class MessageFetcher:
             # offset_date 會獲取早於或等於該日期的訊息
             kwargs['offset_date'] = start_date
         
-        # 預取一些訊息來估計總數
-        estimate_count = 0
-        async for _ in self.client_manager.client.iter_messages(group_entity, limit=100):
-            estimate_count += 1
-        
-        # 估計總數 - 我們不知道確切數量，但給出一個合理的估計
-        estimated_total = estimate_count * 10  # 粗略估計
-        
-        progress = ProgressBar(
-            total=max(1, estimated_total),  # 確保總數至少為 1
-            prefix=f"{c.BRIGHT_CYAN}獲取進度:{c.RESET}", 
-            suffix=f"{c.YELLOW}完成{c.RESET}", 
-            length=40,
-            fill=f"{c.GREEN}█{c.RESET}"
-        )
+        # 初始化計數器
+        counter = ProgressBar(prefix=f"{c.BRIGHT_CYAN}獲取進度:{c.RESET}", suffix=f"{c.YELLOW}完成{c.RESET}")
         
         try:
-            count = 0
+            # 獲取訊息並計數
             async for message in self.client_manager.client.iter_messages(group_entity, **kwargs):
-                # 每 10 條訊息更新一次進度條
-                count += 1
-                if count % 10 == 0:
-                    progress.update(10)
-                
                 # 確保訊息日期包含時區資訊
                 message_date = message.date
                 if message_date.tzinfo is None:
@@ -134,17 +116,23 @@ class MessageFetcher:
                     'forwards': getattr(message, 'forwards', 0)
                 }
                 messages.append(msg_data)
-                if len(messages) >= 1000:
-                    # 如果訊息數量達到 1000 條，則停止獲取
-                    break            # 更新進度條到 100%
+                
+                # 每10條訊息更新一次計數器顯示
+                if len(messages) % 10 == 0:
+                    counter.update(10)
+                
+                # 如果訊息數量達到 10000 條，則停止獲取
+                if len(messages) >= 10000:
+                    break
             
-            # 完成進度條
-            progress.finish()
+            # 完成計數並顯示最終結果
+            counter.finish()
             logger.info(f"成功獲取 {len(messages)} 條訊息")
             return messages
         
         except Exception as e:
-            progress.finish()  # 確保進度條結束，不會影響後續輸出
+            # 確保出錯時也會顯示完整訊息
+            counter.finish()
             logger.error(f"獲取訊息時發生錯誤: {e}")
             return []
     

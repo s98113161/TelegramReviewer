@@ -59,64 +59,37 @@ def supports_color():
 
 
 class ProgressBar:
-    """終端進度條類別，用於顯示操作進度"""
-    
-    def __init__(self, total, prefix='', suffix='', decimals=1, length=50, fill='█', print_end='\r'):
-        """初始化進度條"""
+        
+    def __init__(self, total=None, prefix='', suffix='', decimals=1, length=50, fill='█', print_end='\r'):
+        """初始化計數器"""
         self.total = total
         self.prefix = prefix
         self.suffix = suffix
-        self.decimals = decimals
-        self.length = length
-        self.fill = fill
-        self.print_end = print_end
         self.iteration = 0
         self.start_time = time.time()
         self._print_progress()
     
     def update(self, increment=1):
-        """更新進度條"""
+        """更新計數器"""
         self.iteration += increment
         self._print_progress()
     
     def finish(self):
-        """完成進度條"""
-        self.iteration = self.total
-        self._print_progress()
+        """完成計數"""
+        self._print_progress(is_final=True)
         print()  # 添加換行，使後續輸出在新行
     
-    def _print_progress(self):
-        """打印進度條"""
-        percent = ('{0:.' + str(self.decimals) + 'f}').format(100 * (self.iteration / float(self.total)))
-        filled_length = int(self.length * self.iteration // self.total)
-        bar = self.fill * filled_length + '-' * (self.length - filled_length)
+    def _print_progress(self, is_final=False):
+        """顯示進度"""
+        elapsed_time = time.time() - self.start_time
         
-        # 計算預計剩餘時間
-        if self.iteration > 0:
-            elapsed_time = time.time() - self.start_time
-            items_per_second = self.iteration / elapsed_time
-            if items_per_second > 0:
-                remaining_items = self.total - self.iteration
-                remaining_seconds = remaining_items / items_per_second
-                remaining_time = self._format_time(remaining_seconds)
-                time_suffix = f" | 預計剩餘: {remaining_time}"
-            else:
-                time_suffix = ""
+        if is_final:
+            message = f"\r{self.prefix} 已取得 {self.iteration} 則訊息 ({elapsed_time:.1f} 秒){self.suffix}"
         else:
-            time_suffix = ""
+            message = f"\r{self.prefix} 已取得 {self.iteration} 則訊息...{self.suffix}"
         
-        # 打印進度條
-        sys.stdout.write(f'\r{self.prefix} |{bar}| {percent}% {self.suffix}{time_suffix}')
+        sys.stdout.write(message)
         sys.stdout.flush()
-    
-    def _format_time(self, seconds):
-        """將秒數格式化為時分秒"""
-        if seconds < 60:
-            return f"{int(seconds)}秒"
-        elif seconds < 3600:
-            return f"{int(seconds / 60)}分{int(seconds % 60)}秒"
-        else:
-            return f"{int(seconds / 3600)}時{int((seconds % 3600) / 60)}分"
 
 
 class MessageFormatter:
