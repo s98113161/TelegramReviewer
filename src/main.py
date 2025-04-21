@@ -53,8 +53,6 @@ def parse_arguments():
                         help=f'分析多少天的訊息 (預設: {DEFAULT_DAYS})')
     parser.add_argument('--start-date', type=valid_date, default=None,
                         help='設定分析的起始日期，格式為 YYYYMMDD (例如: 20250410)')
-    parser.add_argument('--limit', type=int, default=None, 
-                        help=f'分析的訊息數量上限 (預設: {DEFAULT_MESSAGE_LIMIT})')
     parser.add_argument('--top', type=int, default=DEFAULT_TOP_COUNT, 
                         help=f'顯示和轉發的熱門訊息數量 (預設: {DEFAULT_TOP_COUNT})')
     parser.add_argument('--use-history', dest='use_history', action='store', 
@@ -79,13 +77,8 @@ def parse_arguments():
         args.end_date = datetime.now()
     else:
         # 如果兩者都沒指定，使用預設值
-        args.days = DEFAULT_DAYS
-        args.start_date = datetime.now() - timedelta(days=args.days)
+        args.start_date = datetime.now() - timedelta(days=DEFAULT_DAYS)
         args.end_date = datetime.now()
-    
-    # 只有在用戶沒有指定 limit 時，才使用預設值
-    if args.limit is None:
-        args.limit = DEFAULT_MESSAGE_LIMIT
         
     return args
 

@@ -23,13 +23,12 @@ class MessageFetcher:
         self.client_manager = client_manager
         self.use_colors = use_colors
         
-    async def get_recent_messages(self, group_entity, days=None, limit=None, start_date=None, end_date=None):
+    async def get_recent_messages(self, group_entity, days=None, start_date=None, end_date=None):
         """獲取群組/頻道的最近訊息
         
         Args:
             group_entity: 群組/頻道實體
             days: 獲取最近幾天的訊息，如果為 None 則不限制天數
-            limit: 最大訊息數量限制，如果為 None 則不限制數量
             start_date: 開始日期，優先使用
             end_date: 結束日期，優先使用
             
@@ -57,18 +56,13 @@ class MessageFetcher:
             end_date = datetime.now(timezone.utc)
             start_date = end_date - timedelta(days=days)
             
-            if limit is not None:
-                logger.info(f"正在從 {group_title} 獲取近 {days} 天內最多 {limit} 條訊息...")
-                print(f"\n正在從 {group_title} 獲取近 {days} 天內最多 {limit} 條訊息，請稍候...")
-            else:
-                logger.info(f"正在從 {group_title} 獲取近 {days} 天的所有訊息...")
-                print(f"\n正在從 {group_title} 獲取近 {days} 天的所有訊息，請稍候...")
+            logger.info(f"正在從 {group_title} 獲取近 {days} 天的訊息...")
+            print(f"\n正在從 {group_title} 獲取近 {days} 天的訊息，請稍候...")
         else:
-            # 沒有指定日期範圍，只按數量獲取
-            start_date = None
-            end_date = None
-            logger.info(f"正在從 {group_title} 獲取最近 {limit if limit else '所有'} 條訊息...")
-            print(f"\n正在從 {group_title} 獲取最近 {limit if limit else '所有'} 條訊息，請稍候...")
+            # 沒有指定日期範圍，視為錯誤
+            logger.error(f"未指定日期範圍")
+            print(f"\n錯誤：必須指定日期範圍")
+            return []
         
         messages = []
         c = Colors if self.use_colors else type('NoColors', (), {attr: '' for attr in dir(Colors) if not attr.startswith('__')})
@@ -77,23 +71,17 @@ class MessageFetcher:
         # 根據 Telethon 文檔，iter_messages 支持 offset_date 參數在服務器端過濾
         kwargs = {}
         
-        if limit is not None:
-            kwargs['limit'] = limit
-        
         if start_date is not None:
             # offset_date 會獲取早於或等於該日期的訊息
             kwargs['offset_date'] = start_date
         
         # 預取一些訊息來估計總數
         estimate_count = 0
-        async for _ in self.client_manager.client.iter_messages(group_entity, limit=min(100, limit if limit else 100)):
+        async for _ in self.client_manager.client.iter_messages(group_entity, limit=100):
             estimate_count += 1
         
-        # 估計總數
-        if limit is not None:
-            estimated_total = min(limit, estimate_count * (limit / 100) if estimate_count > 0 else limit)
-        else:
-            estimated_total = estimate_count * 10  # 粗略估計
+        # 估計總數 - 我們不知道確切數量，但給出一個合理的估計
+        estimated_total = estimate_count * 10  # 粗略估計
         
         progress = ProgressBar(
             total=max(1, estimated_total),  # 確保總數至少為 1
@@ -146,11 +134,9 @@ class MessageFetcher:
                     'forwards': getattr(message, 'forwards', 0)
                 }
                 messages.append(msg_data)
-                
-                # 如果只指定了 limit 而沒有指定 days，
-                # 一旦達到 limit 就停止獲取
-                if limit is not None and len(messages) >= limit and days is None and start_date is None:
-                    break
+                if len(messages) >= 1000:
+                    # 如果訊息數量達到 1000 條，則停止獲取
+                    break            # 更新進度條到 100%
             
             # 完成進度條
             progress.finish()
@@ -217,8 +203,20 @@ class MessageFetcher:
         
         if hasattr(message, 'reactions') and message.reactions:
             for reaction in message.reactions.results:
+                emoji = None
+                # 檢查是標準表情符號還是自訂表情符號
+                if hasattr(reaction.reaction, 'emoticon'):
+                    # 標準表情符號
+                    emoji = reaction.reaction.emoticon
+                elif hasattr(reaction.reaction, 'document_id'):
+                    # 自訂表情符號 - 使用文檔ID作為標識
+                    emoji = f"自訂表情:{reaction.reaction.document_id}"
+                else:
+                    # 未知類型表情符號
+                    emoji = "未知表情符號"
+                
                 reactions.append({
-                    'emoji': reaction.reaction.emoticon,
+                    'emoji': emoji,
                     'count': reaction.count
                 })
                 total_reactions += reaction.count

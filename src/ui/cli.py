@@ -223,27 +223,10 @@ class CommandLineInterface:
             # 顯示指定日期範圍
             start_date_str = args.start_date.strftime("%Y-%m-%d")
             end_date_str = args.end_date.strftime("%Y-%m-%d")
-            
-            if args.limit is not None:
-                # 指定了日期範圍和數量限制
-                print(f"\n正在分析 {group['name']} 的 {start_date_str} 至 {end_date_str} 期間訊息...")
-                print(f"(最多分析 {args.limit} 則訊息，請稍候...)")
-            else:
-                # 只指定了日期範圍，不限制數量
-                print(f"\n正在分析 {group['name']} 的 {start_date_str} 至 {end_date_str} 期間所有訊息...")
-                print("(不限制訊息數量，請稍候...)")
-        elif args.days is not None and args.limit is not None:
-            # 同時指定天數和數量
-            print(f"\n正在分析 {group['name']} 的近 {args.days} 天訊息...")
-            print(f"(最多分析 {args.limit} 則訊息，請稍候...)")
+            print(f"\n正在分析 {group['name']} 的 {start_date_str} 至 {end_date_str} 期間訊息...")
         elif args.days is not None:
-            # 只指定天數，不限制數量
-            print(f"\n正在分析 {group['name']} 的近 {args.days} 天所有訊息...")
-            print("(不限制訊息數量，請稍候...)")
-        elif args.limit is not None:
-            # 只指定數量，不限制天數
-            print(f"\n正在分析 {group['name']} 的最近 {args.limit} 則訊息...")
-            print("(不限制時間範圍，請稍候...)")
+            # 只指定天數
+            print(f"\n正在分析 {group['name']} 的近 {args.days} 天訊息...")
         
         # 獲取實體信息
         entity = None
@@ -261,7 +244,6 @@ class CommandLineInterface:
         messages = await self.message_fetcher.get_recent_messages(
             entity,
             days=args.days,
-            limit=args.limit,
             start_date=args.start_date,
             end_date=args.end_date
         )
